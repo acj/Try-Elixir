@@ -36,7 +36,7 @@ defmodule WebsocketsTerminal.ShellServer do
       response ->
         data = format_json(response)
         Logger.info "[response] #{data}"
-        Phoenix.Channel.broadcast "shell", "shell", "stdout", data
+        WebsocketsTerminal.Endpoint.broadcast! "shell", "stdout", %{data: data}
     end
 
     {:noreply, proc}
