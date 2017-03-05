@@ -1,18 +1,33 @@
 use Mix.Config
 
-config :logger, compile_time_purge_level: :info
+# For development, we disable any cache and enable
+# debugging and code reloading.
+#
+# The watchers configuration can be used to run external
+# watchers to your application. For example, we use it
+# with brunch.io to recompile .js and .css sources.
+config :websockets_terminal, WebsocketsTerminal.Endpoint,
+  http: [port: 4000],
+  debug_errors: true,
+  code_reloader: true,
+  check_origin: false,
+  watchers: []
 
 
-config :phoenix, WebsocketsTerminal.Router,
-  port: System.get_env("PORT") || 4000,
-  ssl: false,
-  code_reload: true,
-  cookies: true,
-  consider_all_requests_local: true,
-  session_key: "_websockets_terminal_key",
-  session_secret: "#NH@XVPL@1QZ5_DF$_KME7D30%$ZR#6ER+77GHK(W#%8@S8B!&ZTS3P2$C1#C&Q)YWR@16C!("
+# Watch static and templates for browser reloading.
+config :websockets_terminal, WebsocketsTerminal.Endpoint,
+  live_reload: [
+    patterns: [
+      ~r{priv/static/.*(js|css|png|jpeg|jpg|gif|svg)$},
+      ~r{priv/gettext/.*(po)$},
+      ~r{web/views/.*(ex)$},
+      ~r{web/templates/.*(eex)$}
+    ]
+  ]
 
-config :phoenix, :logger,
-  level: :debug
+# Do not include metadata nor timestamps in development logs
+config :logger, :console, format: "[$level] $message\n"
 
-
+# Set a higher stacktrace during development. Avoid configuring such
+# in production as building large stacktraces may be expensive.
+config :phoenix, :stacktrace_depth, 20

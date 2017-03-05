@@ -58,6 +58,5 @@ send(proc, {self, {:input, command}})
 
 * Elixir
 * Phoenix
-* Porcelain
 * jquery
 * jqconsole ( for code terminal )

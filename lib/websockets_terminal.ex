@@ -1,9 +1,30 @@
 defmodule WebsocketsTerminal do
   use Application
 
-  # See http://elixir-lang.org/docs/stable/Application.Behaviour.html
+  # See http://elixir-lang.org/docs/stable/elixir/Application.html
   # for more information on OTP Applications
   def start(_type, _args) do
-    WebsocketsTerminal.Supervisor.start_link
+    import Supervisor.Spec
+
+    # Define workers and child supervisors to be supervised
+    children = [
+      # Start the endpoint when the application starts
+      supervisor(WebsocketsTerminal.Endpoint, []),
+      # Start your own worker by calling: WebsocketsTerminal.Worker.start_link(arg1, arg2, arg3)
+      # worker(WebsocketsTerminal.Worker, [arg1, arg2, arg3]),
+      supervisor(WebsocketsTerminal.Supervisor, []),
+    ]
+
+    # See http://elixir-lang.org/docs/stable/elixir/Supervisor.html
+    # for other strategies and supported options
+    opts = [strategy: :one_for_one, name: WebsocketsTerminal.Supervisor]
+    Supervisor.start_link(children, opts)
+  end
+
+  # Tell Phoenix to update the endpoint configuration
+  # whenever the application is updated.
+  def config_change(changed, _new, removed) do
+    WebsocketsTerminal.Endpoint.config_change(changed, removed)
+    :ok
   end
 end

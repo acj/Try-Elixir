@@ -1,7 +1,7 @@
 defmodule WebsocketsTerminal.PageController do
-  use Phoenix.Controller
+  use WebsocketsTerminal.Web, :controller
 
   def index(conn, _params) do
-    render conn, "index"
+    render conn, "index.html"
   end
 end

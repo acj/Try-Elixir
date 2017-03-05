@@ -1,9 +1,26 @@
 defmodule WebsocketsTerminal.Router do
-  use Phoenix.Router
-  use Phoenix.Router.Socket, mount: "/ws"
+  use WebsocketsTerminal.Web, :router
 
-  plug Plug.Static, at: "/static", from: :websockets_terminal
-  get "/", WebsocketsTerminal.PageController, :index, as: :page
+  pipeline :browser do
+    plug :accepts, ["html"]
+    plug :fetch_session
+    plug :fetch_flash
+    plug :protect_from_forgery
+    plug :put_secure_browser_headers
+  end
 
-  channel "shell", WebsocketsTerminal.Channels.Shell
+  pipeline :api do
+    plug :accepts, ["json"]
+  end
+
+  scope "/", WebsocketsTerminal do
+    pipe_through :browser # Use the default browser stack
+
+    get "/", PageController, :index
+  end
+
+  # Other scopes may use custom stacks.
+  # scope "/api", WebsocketsTerminal do
+  #   pipe_through :api
+  # end
 end
