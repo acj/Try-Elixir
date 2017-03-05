@@ -30,7 +30,7 @@ defmodule WebsocketsTerminal.Eval do
     {PrivateModule,     :all}
   ]
 
-  @allowed_non_local Enum.into @init_allowed_non_local, HashDict.new
+  @allowed_non_local Enum.into @init_allowed_non_local, Map.new
 
   # with 0 arity
   @restricted_local [:binding, :is_alive, :make_ref, :node, :self]
@@ -162,7 +162,7 @@ defmodule WebsocketsTerminal.Eval do
   defp is_safe?({{:., _, [module, fun]}, _, args}, funl, config) do
     module = Macro.expand(module, __ENV__)
 
-    case HashDict.get(@allowed_non_local, module) do
+    case Map.get(@allowed_non_local, module) do
       :all ->
         is_safe?(args, funl, config)
       lst when is_list(lst) ->
