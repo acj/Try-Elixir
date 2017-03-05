@@ -9,7 +9,7 @@
   </p>
 </div>
   <div class="col-lg-12 console-container">
-    <div id="console"></div>
+    <div id="console" style="width:100px; height:200px;"></div>
   </div>
 </div>
 <script src="/js/jquery.min.js" type="text/javascript" charset="utf-8"></script>
