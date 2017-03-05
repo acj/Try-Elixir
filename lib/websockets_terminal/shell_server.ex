@@ -16,20 +16,23 @@ defmodule WebsocketsTerminal.ShellServer do
     {:ok, Process.get(:evaluator)}
   end
 
-  def handle_info(noclue,proc) do
+  def handle_info(_msg, proc) do
     {:noreply, proc}
   end
 
   def handle_cast({:eval, command}, proc) do
-    unless Process.alive? proc do
-      WebsocketsTerminal.Eval.start
-      proc = Process.get(:evaluator)
-    end
+    proc =
+      case Process.alive?(proc) do
+        true -> proc
+        false ->
+          WebsocketsTerminal.Eval.start
+          Process.get(:evaluator)
+      end
 
     Logger.info "[command] #{command}"
-    send(proc, {self, {:input, command}})
+    send(proc, {self(), {:input, command}})
 
-    resp = receive do
+    receive do
       response ->
         data = format_json(response)
         Logger.info "[response] #{data}"
