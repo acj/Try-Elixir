@@ -63,9 +63,6 @@ defmodule WebsocketsTerminal.Eval do
   defp eval_loop(config) do
     receive do
       {from, {:input, line}} ->
-        counter = config.counter
-        code    = config.cache
-
         new_config = try do
           counter = config.counter
           code    = config.cache
@@ -90,10 +87,6 @@ defmodule WebsocketsTerminal.Eval do
     end
   end
 
-
-  defp io_error(result) do
-    IO.puts :stdio, IEx.color(:eval_error, result)
-  end
 
   defp format_error(kind, reason, stacktrace) do
     {reason, stacktrace} = normalize_exception(kind, reason, stacktrace)
