@@ -1,5 +1,5 @@
 defmodule WebsocketsTerminal.Config do
-  @derive Access
+#  @derive Access
   defstruct counter: 1, binding: [], cache: '', scope: nil, env: nil,
     result: nil
 end

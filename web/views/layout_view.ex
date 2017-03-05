@@ -1,4 +1,3 @@
 defmodule WebsocketsTerminal.LayoutView do
-  use WebsocketsTerminal.Views
-
+  use WebsocketsTerminal.Web, :view
 end

@@ -9,10 +9,10 @@
   </p>
 </div>
   <div class="col-lg-12 console-container">
-    <div id="console"></div>
+    <div id="console" style="width:100px; height:200px;"></div>
   </div>
 </div>
 <script src="/js/jquery.min.js" type="text/javascript" charset="utf-8"></script>
-<script type="text/javascript" src="/static/js/phoenix.js"></script>
-<script type="text/javascript" src="/static/js/jqconsole.js"></script>
-<script type="text/javascript" src="/static/js/editor.js"></script>
+<script type="text/javascript" src="/js/phoenix.js"></script>
+<script type="text/javascript" src="/js/jqconsole.js"></script>
+<script type="text/javascript" src="/js/editor.js"></script>

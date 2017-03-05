@@ -13,7 +13,8 @@ an elixir app.
 To start you have to:
 
 1. Install dependencies with `mix deps.get`
-2. Start Phoenix router with `mix phoenix.start`
+2. Install Node.js dependencies with `npm install`
+3. Start Phoenix with `mix phoenix.server`
 
 Now you can visit `localhost:4000` from your browser.
 
@@ -58,6 +59,5 @@ send(proc, {self, {:input, command}})
 
 * Elixir
 * Phoenix
-* Porcelain
 * jquery
 * jqconsole ( for code terminal )

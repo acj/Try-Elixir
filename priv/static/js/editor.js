@@ -75,34 +75,41 @@ $(function() {
 
   var handler = function(command) {
     if(command){
-      console_channel.send("shell:stdin", {data: command});
+      console_channel.push("shell:stdin", {data: command});
     }
     return jqconsole.Prompt(true, handler, multiLineHandler);
   };
 
-  var socket = new Phoenix.Socket("ws://" + location.host + "/ws");
+  var joinHandler = function(message) {
+    console_channel = channel;
+    $status.text(message.status);
+    setup_console(message.version);
+    handler();
+  }
+
+  var _phoenix = require("phoenix");
+  var socket = new _phoenix.Socket("/shell", { params: { token: window.userToken } });
+  socket.connect();
   var $status = $('#status');
+  var channel = socket.channel("shell", {});
 
-  socket.join("shell", "shell", {}, function(chan){
-    chan.on("join", function(message){
-      console_channel = chan;
-      $status.text(message.status);
-      setup_console(message.version);
-      handler();
-    });
+  channel.onError( () => console.log("The channel reported an error") )
+  channel.onClose( () => console.log("The channel has closed gracefully") )
+  channel.join()
+    .receive("ok", joinHandler)
+    .receive("error", resp => { console.log("Error: ", resp) } )
 
-    chan.on("stdout", function(message){
-      var txt = JSON.parse(message);
+  channel.on("stdout", function(message){
+    var txt = JSON.parse(message["data"]);
 
-      if(txt){
-        prompt = $('.jqconsole-cursor').parent().find('span')[0];
-        $(prompt).html(txt.prompt);
-        jqconsole.SetPromptLabel(txt.prompt);
-        jqconsole.prompt_label_continue = txt.prompt.replace("iex", "...");
+    if(txt){
+      prompt = $('.jqconsole-cursor').parent().find('span')[0];
+      $(prompt).html(txt.prompt);
+      jqconsole.SetPromptLabel(txt.prompt);
+      jqconsole.prompt_label_continue = txt.prompt.replace("iex", "...");
 
-        jqconsole.Write(txt.result + '\n', txt.type);
-        jqconsole.Write(':' + txt.type + '\n');
-      }
-    });
-  }); // end socket block
+      jqconsole.Write(txt.result + '\n', txt.type);
+      jqconsole.Write(':' + txt.type + '\n');
+    }
+  });
 });

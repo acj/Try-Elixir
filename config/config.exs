@@ -1,24 +1,23 @@
 # This file is responsible for configuring your application
+# and its dependencies with the aid of the Mix.Config module.
+#
+# This configuration file is loaded before any dependency and
+# is restricted to this project.
 use Mix.Config
 
-# Note this file is loaded before any dependency and is restricted
-# to this project. If another project depends on this project, this
-# file won't be loaded nor affect the parent project.
+# Configures the endpoint
+config :websockets_terminal, WebsocketsTerminal.Endpoint,
+  url: [host: "localhost"],
+  secret_key_base: "j2YIa54DI8qcDjum3sRHEHYTfYtUc/jLAt56zF9MnqccMfAHHJwTnotDpudqkBeZ",
+  render_errors: [view: WebsocketsTerminal.ErrorView, accepts: ~w(html json)],
+  pubsub: [name: WebsocketsTerminal.PubSub,
+           adapter: Phoenix.PubSub.PG2]
 
-config :phoenix, WebsocketsTerminal.Router,
-  port: System.get_env("PORT"),
-  ssl: false,
-  code_reload: false,
-  static_assets: true,
-  cookies: true,
-  session_key: "_websockets_terminal_key",
-  session_secret: "#NH@XVPL@1QZ5_DF$_KME7D30%$ZR#6ER+77GHK(W#%8@S8B!&ZTS3P2$C1#C&Q)YWR@16C!("
+# Configures Elixir's Logger
+config :logger, :console,
+  format: "$time $metadata[$level] $message\n",
+  metadata: [:request_id]
 
-config :phoenix, :logger,
-  level: :error
-
-config :logger, compile_time_purge_level: :info
-
-# Import environment specific config. Note, this must remain at the bottom of
-# this file to properly merge your previous config entries.
+# Import environment specific config. This must remain at the bottom
+# of this file so it overrides the configuration defined above.
 import_config "#{Mix.env}.exs"
