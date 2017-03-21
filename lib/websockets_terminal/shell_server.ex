@@ -12,8 +12,8 @@ defmodule WebsocketsTerminal.ShellServer do
 
   # gen server callbacks
   def init(:ok) do
-    WebsocketsTerminal.Eval.start
-    {:ok, Process.get(:evaluator)}
+    evaluator = WebsocketsTerminal.Eval.start
+    {:ok, evaluator}
   end
 
   def handle_info(_msg, proc) do
@@ -24,9 +24,7 @@ defmodule WebsocketsTerminal.ShellServer do
     proc =
       case Process.alive?(proc) do
         true -> proc
-        false ->
-          WebsocketsTerminal.Eval.start
-          Process.get(:evaluator)
+        false -> WebsocketsTerminal.Eval.start
       end
 
     Logger.info "[command] #{command}"

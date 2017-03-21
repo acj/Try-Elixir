@@ -56,8 +56,7 @@ defmodule WebsocketsTerminal.Eval do
     scope  = :elixir_env.env_to_scope(env)
     config = %WebsocketsTerminal.Config{scope: scope, env: env}
 
-    evaluator = spawn(fn -> eval_loop(config) end)
-    Process.put(:evaluator, evaluator)
+    spawn(fn -> eval_loop(config) end)
   end
 
   defp eval_loop(config) do
