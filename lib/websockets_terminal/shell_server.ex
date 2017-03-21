@@ -40,7 +40,7 @@ defmodule WebsocketsTerminal.ShellServer do
     {:noreply, proc}
   end
 
-    defp format_json({prompt, nil}) do
+  defp format_json({prompt, nil}) do
     ~s/{"prompt":"#{prompt}"}/
   end
 
