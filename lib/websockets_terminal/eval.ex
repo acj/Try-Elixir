@@ -5,6 +5,9 @@ defmodule WebsocketsTerminal.Config do
 end
 
 defmodule WebsocketsTerminal.Eval do
+  use GenServer
+  require Logger
+
   @init_allowed_non_local [
     {Access,       :all},
     {Bitwise,      :all},
@@ -51,41 +54,54 @@ defmodule WebsocketsTerminal.Eval do
     :__block__, :"{}", :"<<>>", :::, :lc, :inlist, :bc, :inbits, :^, :when, :|,
     :defmodule, :def, :defp, :__aliases__]
 
-  def start do
+  def start_link do
+		GenServer.start_link(__MODULE__, [])
+	end
+
+  def init(_) do
+		Logger.info "Starting #{__MODULE__}"
+
     env    = :elixir.env_for_eval(file: "iex", delegate_locals_to: nil)
     scope  = :elixir_env.env_to_scope(env)
     config = %WebsocketsTerminal.Config{scope: scope, env: env}
+    state  = %{config: config}
+		{:ok, state}
+	end
 
-    spawn(fn -> eval_loop(config) end)
+  def handle_info(_msg, proc) do
+    {:noreply, proc}
   end
 
-  defp eval_loop(config) do
-    receive do
-      {from, {:input, line}} ->
-        new_config = try do
-          counter = config.counter
-          code    = config.cache
-          eval(code, :unicode.characters_to_list(line), counter, config)
-        catch
-          kind, error ->
-            # IO.puts "eval_loop CATCH IN RECEIVE BLOCK!"
-            # IO.inspect System.stacktrace
+  def handle_call({:evaluate, command}, _from, state) do
+    {prompt, config} = evaluate_command(command, state.config)
 
-            %{config | cache: '',
-                result: {"error", format_error(kind, error, System.stacktrace)}}
-        end
-        prompt = new_prompt(new_config)
-        send(from, {prompt, new_config.result})
-        eval_loop(%{new_config | result: nil})
-      :exit ->
-        :ok
-    after
-      # kill the process after 5 minutes of idle
-      300000 ->
-        :ok
-    end
+    result = {prompt, config.result}
+    config = %{config | result: nil}
+    state = %{state | config: config}
+
+    {:reply, result, state}
   end
 
+  def evaluate(pid, command) when is_pid(pid) and is_binary(command) do
+    GenServer.call(pid, {:evaluate, command})
+  end
+
+  defp evaluate_command(command, config) do
+    new_config =
+      try do
+        counter = config.counter
+        code    = config.cache
+        eval(code, :unicode.characters_to_list(command), counter, config)
+      catch
+        kind, error ->
+          Logger.warn("Error raised while evaluating command: #{command}")
+          Logger.warn("Stack trace: #{inspect System.stacktrace}")
+
+          %{config | cache: '', result: {"error", format_error(kind, error, System.stacktrace)}}
+      end
+
+    {new_prompt(new_config), new_config}
+  end
 
   defp format_error(kind, reason, stacktrace) do
     {reason, stacktrace} = normalize_exception(kind, reason, stacktrace)

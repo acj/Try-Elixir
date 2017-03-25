@@ -1,9 +1,17 @@
 defmodule WebsocketsTerminal.ShellServer do
+  alias WebsocketsTerminal.Eval
   use GenServer
   require Logger
 
-  def start_link(opts \\ []) do
-    GenServer.start_link(__MODULE__, :ok, opts)
+  @timeout 300_000
+
+  def start(id) do
+    {:ok, _} = WebsocketsTerminal.Supervisor.start_child(id)
+  end
+
+  def start_link(id, opts \\ []) do
+    Logger.info("Starting #{__MODULE__} with timeout #{@timeout}")
+    GenServer.start_link(__MODULE__, [], opts)
   end
 
   def eval(server, command) do
@@ -11,33 +19,30 @@ defmodule WebsocketsTerminal.ShellServer do
   end
 
   # gen server callbacks
-  def init(:ok) do
-    evaluator = WebsocketsTerminal.Eval.start
-    {:ok, evaluator}
+  def init(_) do
+    {:ok, evaluator} = WebsocketsTerminal.Eval.start_link()
+    state = %{evaluator: evaluator}
+    {:ok, state, @timeout}
   end
 
-  def handle_info(_msg, proc) do
-    {:noreply, proc}
+  def handle_info(:timeout, _) do
+		Logger.info("#{__MODULE__} shutting down due to timeout")
+
+		{:stop, :normal, []}
+	end
+
+  def handle_info(_msg, state) do
+    {:noreply, state}
   end
 
-  def handle_cast({:eval, command}, proc) do
-    proc =
-      case Process.alive?(proc) do
-        true -> proc
-        false -> WebsocketsTerminal.Eval.start
-      end
-
+  def handle_cast({:eval, command}, state) do
     Logger.info "[command] #{command}"
-    send(proc, {self(), {:input, command}})
+    response = Eval.evaluate(state[:evaluator], command)
+    data = format_json(response)
+    Logger.info "[response] #{data}"
+    WebsocketsTerminal.Endpoint.broadcast! "shell", "stdout", %{data: data}
 
-    receive do
-      response ->
-        data = format_json(response)
-        Logger.info "[response] #{data}"
-        WebsocketsTerminal.Endpoint.broadcast! "shell", "stdout", %{data: data}
-    end
-
-    {:noreply, proc}
+    {:noreply, state, @timeout}
   end
 
   defp format_json({prompt, nil}) do
