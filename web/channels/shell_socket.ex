@@ -2,7 +2,7 @@ defmodule WebsocketsTerminal.ShellSocket do
   use Phoenix.Socket
 
   ## Channels
-  channel "shell", WebsocketsTerminal.ShellChannel
+  channel "shell*", WebsocketsTerminal.ShellChannel
 
   ## Transports
   transport :websocket, Phoenix.Transports.WebSocket

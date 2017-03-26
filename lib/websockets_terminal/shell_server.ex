@@ -9,40 +9,44 @@ defmodule WebsocketsTerminal.ShellServer do
     {:ok, _} = WebsocketsTerminal.Supervisor.start_child(id)
   end
 
-  def start_link(id, opts \\ []) do
-    Logger.info("Starting #{__MODULE__} with timeout #{@timeout}")
-    GenServer.start_link(__MODULE__, [], opts)
+  def start_link(config) do
+    Logger.info("Starting #{__MODULE__} with ID #{config[:identifier]} timeout #{@timeout}")
+    GenServer.start_link(__MODULE__, config, name: config[:name])
   end
 
-  def eval(server, command) do
-    GenServer.cast(server, {:eval, command})
+  def via(id) do
+    {:via, Registry, {WebsocketsTerminal.Registry, "ShellServer_#{id}"}}
   end
 
-  # gen server callbacks
-  def init(_) do
+  def eval(shell_identifier, command) do
+    GenServer.call(via(shell_identifier), {:eval, command})
+  end
+
+  def init(config) do
     {:ok, evaluator} = WebsocketsTerminal.Eval.start_link()
-    state = %{evaluator: evaluator}
+    state = %{identifier: config[:identifier], evaluator: evaluator}
     {:ok, state, @timeout}
   end
 
-  def handle_info(:timeout, _) do
+  def handle_info(:timeout, state) do
 		Logger.info("#{__MODULE__} shutting down due to timeout")
 
-		{:stop, :normal, []}
+    # TODO: Send message in channel
+
+    {:stop, :normal, state}
 	end
 
   def handle_info(_msg, state) do
     {:noreply, state}
   end
 
-  def handle_cast({:eval, command}, state) do
-    Logger.info "[command] #{command}"
-    response = Eval.evaluate(state[:evaluator], command)
-    data = format_json(response)
-    Logger.info "[response] #{data}"
-    WebsocketsTerminal.Endpoint.broadcast! "shell", "stdout", %{data: data}
+  def handle_call({:eval, command}, _from, state) do
+    Logger.info "[command](#{state[:identifier]}) #{command}"
+    eval_result = Eval.evaluate(state[:evaluator], command)
+    response = format_json(eval_result)
+    Logger.info "[response](#{state[:identifier]}) #{response}"
 
-    {:noreply, state, @timeout}
+    {:reply, response, state, @timeout}
   end
 
   defp format_json({prompt, nil}) do

@@ -1,5 +1,6 @@
 $(function() {
-  var console_channel;
+  var commonTopic;
+  var privateShellTopic;
 
   var setup_console = function(version){
     var header = 'Interactive Elixir (' + version + ')\n';
@@ -73,43 +74,68 @@ $(function() {
     }
   };
 
-  var handler = function(command) {
-    if(command){
-      console_channel.push("shell:stdin", {data: command});
+  var handleShellServerResponse = function(message) {
+    console.log(message);
+    var reply = JSON.parse(message.command_result);
+    if (reply) {
+      prompt = $('.jqconsole-cursor').parent().find('span')[0];
+      $(prompt).html(reply.prompt);
+      jqconsole.SetPromptLabel(reply.prompt);
+      jqconsole.prompt_label_continue = reply.prompt.replace("iex", "...");
+
+      jqconsole.Write(reply.result + '\n', reply.type);
     }
-    return jqconsole.Prompt(true, handler, multiLineHandler);
   };
 
-  var joinHandler = function(message) {
-    console_channel = channel;
+  var evalResultHandler = function(command, identifier) {
+    if (command) {
+        privateShellTopic.push("shell:" + identifier, {data: command})
+          .receive('ok', handleShellServerResponse)
+          .receive("error", resp => { console.log("Error evaluating command: ", resp) } )
+          .receive('timeout', () => { console.log("Timed out waiting for command") })
+    }
+    var handler_with_identifier = function(command) {
+      evalResultHandler(command, identifier);
+    }
+    return jqconsole.Prompt(true, handler_with_identifier, multiLineHandler);
+  };
+
+  var joinPrivateTopicHandler = function(socket, message, identifier) {
+    console.log(message);
+    evalResultHandler(null, identifier);
+  }
+
+  var preparePrivateTopic = function(socket, identifier) {
+    privateShellTopic = socket.channel("shell:" + identifier);
+    privateShellTopic.onError( () => console.log("The shell channel reported an error"))
+    privateShellTopic.onClose( () => console.log("The shell channel has closed gracefully"))
+    privateShellTopic.join()
+      .receive("ok", message => joinPrivateTopicHandler(socket, message, identifier))
+      .receive("error", resp => { console.log("Error: ", resp) })
+
+    privateShellTopic.on("shell:" + identifier, handleShellServerResponse)
+  };
+
+  var joinCommonTopicHandler = function(socket, message) {
     $status.text(message.status);
     setup_console(message.version);
-    handler();
-  }
+
+    preparePrivateTopic(socket, message.identifier);
+  };
 
   var _phoenix = require("phoenix");
   var socket = new _phoenix.Socket("/shell", { params: { token: window.userToken } });
   socket.connect();
   var $status = $('#status');
-  var channel = socket.channel("shell", {});
 
-  channel.onError( () => console.log("The channel reported an error") )
-  channel.onClose( () => console.log("The channel has closed gracefully") )
-  channel.join()
-    .receive("ok", joinHandler)
+  commonTopic = socket.channel("shell", {});
+  commonTopic.onError( () => console.log("The common channel reported an error") )
+  commonTopic.onClose( () => console.log("The common channel has closed gracefully") )
+  commonTopic.join()
+    .receive("ok", message => joinCommonTopicHandler(socket, message))
     .receive("error", resp => { console.log("Error: ", resp) } )
 
-  channel.on("stdout", function(message){
-    var txt = JSON.parse(message["data"]);
-
-    if(txt){
-      prompt = $('.jqconsole-cursor').parent().find('span')[0];
-      $(prompt).html(txt.prompt);
-      jqconsole.SetPromptLabel(txt.prompt);
-      jqconsole.prompt_label_continue = txt.prompt.replace("iex", "...");
-
-      jqconsole.Write(txt.result + '\n', txt.type);
-      jqconsole.Write(':' + txt.type + '\n');
-    }
+  commonTopic.on("shell", function(message){
+    // TODO: Handle broadcasts
   });
 });
