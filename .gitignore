@@ -4,6 +4,7 @@
 /deps
 /*.ez
 /node_modules
+/priv
 
 # Generated on crash by the VM
 erl_crash.dump
