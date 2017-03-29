@@ -1,4 +1,4 @@
-$(function() {
+var run = function() {
   var commonTopic;
   var privateShellTopic;
 
@@ -138,4 +138,8 @@ $(function() {
   commonTopic.on("shell", function(message){
     // TODO: Handle broadcasts
   });
-});
+};
+
+export var Editor = {
+  run: run
+}
