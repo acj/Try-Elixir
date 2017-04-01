@@ -1,15 +1,3 @@
-defmodule WebsocketsTerminal.Config do
-  defstruct [
-    counter: 1,
-    binding: [],
-    cache: '',
-    scope: nil,
-    env: nil,
-    result: nil,
-    allow_unsafe_commands: false
-  ]
-end
-
 defmodule WebsocketsTerminal.Eval do
   use GenServer
   require Logger
@@ -24,8 +12,15 @@ defmodule WebsocketsTerminal.Eval do
     env    = :elixir.env_for_eval(file: "iex", delegate_locals_to: nil)
     scope  = :elixir_env.env_to_scope(env)
     unsafe = opts[:allow_unsafe_commands] || false
-    config = %WebsocketsTerminal.Config{scope: scope, env: env, allow_unsafe_commands: unsafe}
-    state  = %{config: config}
+    state  = %{
+      counter: 1,
+      binding: [],
+      cache: '',
+      scope: scope,
+      env: env,
+      result: nil,
+      allow_unsafe_commands: unsafe
+    }
 		{:ok, state}
 	end
 
@@ -34,11 +29,10 @@ defmodule WebsocketsTerminal.Eval do
   end
 
   def handle_call({:evaluate, command}, _from, state) do
-    {prompt, config} = evaluate_command(command, state.config)
+    {prompt, state} = evaluate_command(command, state)
 
-    result = {prompt, config.result}
-    config = %{config | result: nil}
-    state = %{state | config: config}
+    result = {prompt, state[:result]}
+    state = %{state | result: nil}
 
     {:reply, result, state}
   end
@@ -47,21 +41,21 @@ defmodule WebsocketsTerminal.Eval do
     GenServer.call(pid, {:evaluate, command})
   end
 
-  defp evaluate_command(command, config) do
-    new_config =
+  defp evaluate_command(command, state) do
+    new_state =
       try do
-        counter = config.counter
-        code    = config.cache
-        eval(code, :unicode.characters_to_list(command), counter, config)
+        counter = state[:counter]
+        code    = state[:cache]
+        eval(code, :unicode.characters_to_list(command), counter, state)
       catch
         kind, error ->
           Logger.warn("Error raised while evaluating command: #{command}")
           Logger.warn("Stack trace: #{inspect System.stacktrace}")
 
-          %{config | cache: '', result: {"error", format_error(kind, error, System.stacktrace)}}
+          %{state | cache: '', result: {"error", format_error(kind, error, System.stacktrace)}}
       end
 
-    {new_prompt(new_config), new_config}
+    {new_prompt(new_state), new_state}
   end
 
   defp format_error(kind, reason, stacktrace) do
@@ -86,9 +80,9 @@ defmodule WebsocketsTerminal.Eval do
     end
   end
 
-  defp new_prompt(config) do
-    prefix = if config.cache != '', do: "..."
-    "#{prefix || "iex"}(#{config.counter})> "
+  defp new_prompt(state) do
+    prefix = if state[:cache] != '', do: "..."
+    "#{prefix || "iex"}(#{state[:counter]})> "
   end
 
   # The expression is parsed to see if it's well formed.
@@ -100,29 +94,29 @@ defmodule WebsocketsTerminal.Eval do
   # line in the `eval_loop`). In case of any other error, we let :elixir_translator
   # to re-raise it.
   #
-  # Returns updated config.
-  defp eval(code_so_far, latest_input, line, config) do
+  # Returns updated state.
+  defp eval(code_so_far, latest_input, line, state) do
     code = code_so_far ++ latest_input
     case Code.string_to_quoted(code, [line: line, file: "iex"]) do
       { :ok, forms } ->
-        unless config.allow_unsafe_commands || __MODULE__.Gatekeeper.is_safe?(forms, [], config) do
+        unless state[:allow_unsafe_commands] || __MODULE__.Gatekeeper.is_safe?(forms, [], state) do
           raise "restricted"
         end
 
-        {result, new_binding, env, scope} = :elixir.eval_forms(forms, config.binding, config.env, config.scope)
+        {result, new_binding, env, scope} = :elixir.eval_forms(forms, state[:binding], state[:env], state[:scope])
 
-        %{config | env: env,
+        %{state | env: env,
            cache: '',
            scope: scope,
            binding: new_binding,
-           counter: config.counter + 1,
+           counter: state[:counter] + 1,
            result: {"ok", result}}
 
       { :error, { line, error, token } } ->
         if token == [] do
-          # Update config.cache in order to keep adding new input to
+          # Update state[:cache] in order to keep adding new input to
           # the unfinished expression in `code`
-          %{config | cache: code ++ '\n'}
+          %{state | cache: code ++ '\n'}
         else
           # Encountered malformed expression
           :elixir_errors.parse_error(line, "iex", error, token)
