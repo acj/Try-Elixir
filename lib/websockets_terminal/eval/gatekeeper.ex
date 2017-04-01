@@ -54,77 +54,77 @@ defmodule WebsocketsTerminal.Eval.Gatekeeper do
   # true otherwise.
   #
   # check modules
-  def is_safe?({{:., _, [module, fun]}, _, args}, funl, config) do
+  def safe?({{:., _, [module, fun]}, _, args}, funl, config) do
     module = Macro.expand(module, __ENV__)
 
     case Map.get(@allowed_non_local, module) do
       :all ->
-        is_safe?(args, funl, config)
+        safe?(args, funl, config)
       lst when is_list(lst) ->
-        (fun in lst) and is_safe?(args, funl, config)
+        (fun in lst) and safe?(args, funl, config)
       _ ->
         false
     end
   end
 
   # check calls to anonymous functions, eg. f.()
-  def is_safe?({{:., _, f_args}, _, args}, funl, config) do
-    is_safe?(f_args, funl, config) and is_safe?(args, funl, config)
+  def safe?({{:., _, f_args}, _, args}, funl, config) do
+    safe?(f_args, funl, config) and safe?(args, funl, config)
   end
 
   # used with :fn
-  def is_safe?([do: args], funl, config) do
-    is_safe?(args, funl, config)
+  def safe?([do: args], funl, config) do
+    safe?(args, funl, config)
   end
 
   # used with :'->'
-  def is_safe?({left, _, right}, funl, config) when is_list(left) do
-    is_safe?(left, funl, config) and is_safe?(right, funl, config)
+  def safe?({left, _, right}, funl, config) when is_list(left) do
+    safe?(left, funl, config) and safe?(right, funl, config)
   end
 
   # limit range size
-  def is_safe?({:.., _, [begin, last]}, _, _) do
+  def safe?({:.., _, [begin, last]}, _, _) do
     (last - begin) <= 100 and last < 1000
   end
 
   # don't size and unit in :::
-  def is_safe?({:::, _, [_, opts]}, _, _) do
+  def safe?({:::, _, [_, opts]}, _, _) do
     do_opts(opts)
   end
 
   # allow functions inside the module to be called on that module as locals
-  def is_safe?({:defmodule, _, args}, _, config) do
-    is_safe?(args, get_mod_funs(args), config)
+  def safe?({:defmodule, _, args}, _, config) do
+    safe?(args, get_mod_funs(args), config)
   end
 
   # check functions defined with Kernel.def/2
-  def is_safe?({fun, _, [header, args]}, funl, config) when fun == :def or fun == :defp do
+  def safe?({fun, _, [header, args]}, funl, config) when fun == :def or fun == :defp do
     case header do
       {:when, _, [_|rest]} ->
-        is_safe?(rest, funl, config) and is_safe?(args, funl, config)
+        safe?(rest, funl, config) and safe?(args, funl, config)
       _ ->
-        is_safe?(args, funl, config)
+        safe?(args, funl, config)
     end
   end
 
   # check 0 arity local functions
-  def is_safe?({dot, _, nil}, funl, _) when is_atom(dot) do
+  def safe?({dot, _, nil}, funl, _) when is_atom(dot) do
     (dot in funl) or (not dot in @restricted_local)
   end
 
-  def is_safe?({dot, _, args}, funl, config) do
-    ((dot in funl) or (dot in @allowed_local)) and is_safe?(args, funl, config)
+  def safe?({dot, _, args}, funl, config) do
+    ((dot in funl) or (dot in @allowed_local)) and safe?(args, funl, config)
   end
 
-  def is_safe?(lst, funl, config) when is_list(lst) do
+  def safe?(lst, funl, config) when is_list(lst) do
     if length(lst) <= 100 do
-      Enum.all?(lst, fn(x) -> is_safe?(x, funl, config) end)
+      Enum.all?(lst, fn(x) -> safe?(x, funl, config) end)
     else
       false
     end
   end
 
-  def is_safe?(_, _, _) do
+  def safe?(_, _, _) do
     true
   end
 

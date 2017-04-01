@@ -99,7 +99,7 @@ defmodule WebsocketsTerminal.Eval do
     code = code_so_far ++ latest_input
     case Code.string_to_quoted(code, [line: line, file: "iex"]) do
       { :ok, forms } ->
-        unless state[:allow_unsafe_commands] || __MODULE__.Gatekeeper.is_safe?(forms, [], state) do
+        unless state[:allow_unsafe_commands] || __MODULE__.Gatekeeper.safe?(forms, [], state) do
           raise "restricted"
         end
 
