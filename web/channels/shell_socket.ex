@@ -20,6 +20,7 @@ defmodule WebsocketsTerminal.ShellSocket do
   # See `Phoenix.Token` documentation for examples in
   # performing token verification on connect.
   def connect(_params, socket) do
+    socket = assign(socket, :client_id, random_string(20))
     {:ok, socket}
   end
 
@@ -34,4 +35,8 @@ defmodule WebsocketsTerminal.ShellSocket do
   #
   # Returning `nil` makes this socket anonymous.
   def id(_socket), do: nil
+
+  defp random_string(length) do
+    :crypto.strong_rand_bytes(length) |> Base.url_encode64 |> binary_part(0, length)
+  end
 end

@@ -4,8 +4,7 @@ defmodule WebsocketsTerminal.ShellChannel do
 
   def join("shell", _message, socket) do
     Logger.debug "JOIN #{socket.channel}.#{socket.topic}"
-    id = random_string(20)
-    {:ok, %{identifier: id, status: "REMOTE IEX TERMINAL READY", version: System.version()}, socket}
+    {:ok, %{identifier: socket.assigns[:client_id], status: "REMOTE IEX TERMINAL READY", version: System.version()}, socket}
   end
 
   def join("shell:" <> shell_identifier, _message, socket) do
