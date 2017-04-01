@@ -8,22 +8,36 @@ defmodule WebsocketsTerminal.ShellChannel do
   end
 
   def join("shell:" <> shell_identifier, _message, socket) do
-    WebsocketsTerminal.ShellServer.start(shell_identifier)
-    Logger.debug "JOIN #{socket.channel}.#{socket.topic}"
-    {:ok, %{status: "REMOTE IEX TERMINAL READY", version: System.version()}, socket}
+    if validate_client(socket, shell_identifier) do
+      WebsocketsTerminal.ShellServer.start(shell_identifier)
+      Logger.debug "JOIN #{socket.channel}.#{socket.topic}"
+      {:ok, %{status: "REMOTE IEX TERMINAL READY", version: System.version()}, socket}
+    else
+      Logger.warn "JOIN unauthorized for #{shell_identifier}"
+      unauthorized_response()
+    end
   end
 
-  def join(_private_topic, _message, _socket) do
-    Logger.info "JOIN unauthorized"
-    {:error, %{reason: :unauthorized}}
+  def join(unknown_topic, _message, _socket) do
+    Logger.warn "JOIN unauthorized for unrecognized topic: #{unknown_topic}"
+    unauthorized_response()
   end
 
   def handle_in("shell:" <> shell_identifier, message, socket) do
-    result = WebsocketsTerminal.ShellServer.eval(shell_identifier, message["data"])
-    {:reply, {:ok, %{command_result: result}}, socket}
+    if validate_client(socket, shell_identifier) do
+      result = WebsocketsTerminal.ShellServer.eval(shell_identifier, message["data"])
+      {:reply, {:ok, %{command_result: result}}, socket}
+    else
+      Logger.warn "Message unauthorized: #{message}"
+      unauthorized_response()
+    end
   end
 
-  defp random_string(length) do
-    :crypto.strong_rand_bytes(length) |> Base.url_encode64 |> binary_part(0, length)
+  defp validate_client(socket, candidate_id) do
+    socket.assigns[:client_id] == candidate_id
+  end
+
+  defp unauthorized_response do
+    {:error, %{reason: :unauthorized}}
   end
 end
