@@ -23,7 +23,7 @@ defmodule WebsocketsTerminal.ShellServer do
   end
 
   def init(config) do
-    {:ok, evaluator} = WebsocketsTerminal.Eval.start_link()
+    {:ok, evaluator} = WebsocketsTerminal.Eval.start_link(allow_unsafe_commands: false)
     state = %{identifier: config[:identifier], evaluator: evaluator}
     {:ok, state, @timeout}
   end

@@ -1,23 +1,31 @@
 defmodule WebsocketsTerminal.Config do
 #  @derive Access
-  defstruct counter: 1, binding: [], cache: '', scope: nil, env: nil,
-    result: nil
+  defstruct [
+    counter: 1,
+    binding: [],
+    cache: '',
+    scope: nil,
+    env: nil,
+    result: nil,
+    allow_unsafe_commands: false
+  ]
 end
 
 defmodule WebsocketsTerminal.Eval do
   use GenServer
   require Logger
 
-  def start_link do
-		GenServer.start_link(__MODULE__, [])
+  def start_link(opts) do
+		GenServer.start_link(__MODULE__, opts)
 	end
 
-  def init(_) do
+  def init(opts) do
 		Logger.info "Starting #{__MODULE__}"
 
     env    = :elixir.env_for_eval(file: "iex", delegate_locals_to: nil)
     scope  = :elixir_env.env_to_scope(env)
-    config = %WebsocketsTerminal.Config{scope: scope, env: env}
+    unsafe = opts[:allow_unsafe_commands] || false
+    config = %WebsocketsTerminal.Config{scope: scope, env: env, allow_unsafe_commands: unsafe}
     state  = %{config: config}
 		{:ok, state}
 	end
@@ -98,7 +106,7 @@ defmodule WebsocketsTerminal.Eval do
     code = code_so_far ++ latest_input
     case Code.string_to_quoted(code, [line: line, file: "iex"]) do
       { :ok, forms } ->
-        unless __MODULE__.Gatekeeper.is_safe?(forms, [], config) do
+        unless config.allow_unsafe_commands || __MODULE__.Gatekeeper.is_safe?(forms, [], config) do
           raise "restricted"
         end
 
